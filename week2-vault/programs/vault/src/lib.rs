@@ -1,11 +1,13 @@
 #![allow(unexpected_cfgs)]
-use anchor_lang::{prelude::*, system_program::{Transfer, transfer} };
+use anchor_lang::{
+    prelude::*,
+    system_program::{transfer, Transfer},
+};
 
 declare_id!("FPQRxkyehmwNmaDjoCgDzvyWL9fvYSzxj1GqqxCVR7Fk");
 
 #[program]
 pub mod vault {
-
 
     use super::*;
 
@@ -42,7 +44,7 @@ pub struct Initialize<'info> {
         space = 8 + VaultState::INIT_SPACE,
     )]
     pub vault_state: Account<'info, VaultState>,
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> Initialize<'info> {
@@ -112,17 +114,16 @@ pub struct Payments<'info> {
         bump = vault_state.state_bump,
     )]
     pub vault_state: Account<'info, VaultState>,
-    pub system_program: Program<'info, System>
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> Payments<'info> {
     pub fn deposit(&mut self, amount: u64) -> Result<()> {
-
         let cpi_program = self.system_program.to_account_info();
 
         let cpi_account = Transfer {
             from: self.signer.to_account_info(),
-            to: self.vault.to_account_info()
+            to: self.vault.to_account_info(),
         };
 
         let cpi_ctx = CpiContext::new(cpi_program, cpi_account);
@@ -132,11 +133,9 @@ impl<'info> Payments<'info> {
         Ok(())
     }
 
-
     pub fn withdraw(&mut self, amount: u64) -> Result<()> {
         // require!(amount <= self.vault.lamports);
         // let amount_in_vault = self.vault.lamports;
-
 
         let cpi_program = self.system_program.to_account_info();
 
