@@ -30,8 +30,8 @@ pub struct Make<'info> {
         init,
         payer = maker,
         seeds = [b"escrow", maker.key().as_ref(), seed.to_le_bytes().as_ref()],
-        space = 8 + Escrow::INIT_SPACE
-        bump,
+        space = 8 + Escrow::INIT_SPACE,
+        bump
     )]
     pub escrow: Account<'info, Escrow>,
 
@@ -75,8 +75,8 @@ impl<'info> Make<'info> {
         };
 
         let cpi_ctx = CpiContext::new(self.token_program.to_account_info(), transfer_accounts);
-        transfer_check(cpi_ctx, deposit, self.mint_a.decimals)?;
+        transfer_checked(cpi_ctx, deposit, self.mint_a.decimals)?;
 
-        Ok(());
+        Ok(())
     }
 }
