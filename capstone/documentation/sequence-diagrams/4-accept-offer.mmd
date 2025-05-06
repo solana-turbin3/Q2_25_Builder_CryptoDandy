@@ -1,0 +1,14 @@
+sequenceDiagram
+    actor Buyer as Buyer
+    participant Main as BestOffer Progam
+    participant BuyingIntent as Buying Intent Account (PDA)<br/>
+    participant Offer as Offer Account (PDA)
+    participant Vault as Offer Vault Account (PDA)
+    actor Seller as Seller
+    Buyer ->> Main: Accept an seller offer
+    Main -->> BuyingIntent: AcceptOffer
+    Note over Main, BuyingIntent: Set client site encrypted <br/>(with seller pubkey) personal <br/>shipping information<br/><br/>Change state from<br/> "Published" to "Confirmed"
+    Main -->> Offer: AcceptOffer
+    Note over Main, Offer: Change state from "Published" to "Accepted"
+    Main -->> Vault: Deposit
+    Note over Main, Vault: Vault is initialized and offer amount is deposited

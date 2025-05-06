@@ -1,0 +1,12 @@
+sequenceDiagram
+    actor Buyer as Buyer
+    participant Main as BestOffer Progam
+    participant BuyingIntent as Buying Intent Account (PDA)<br/>
+    participant Offer as Offer Account (PDA)
+    participant Vault as Offer Vault Account (PDA)
+    actor Seller as Seller
+    Buyer ->> Main: Confirm the parcel delivery
+    Main -->> BuyingIntent: ConfirmDelivery
+    Note over Main, BuyingIntent: Change state from <br/>"Accepted" to "Delivered"
+    Main -->> Offer: ConfirmDelivery
+    Note over Main, Offer: Change state from "Accepted" to "Fulfilled"

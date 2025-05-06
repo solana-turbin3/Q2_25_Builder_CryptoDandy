@@ -1,0 +1,11 @@
+sequenceDiagram
+    actor Buyer as Buyer
+    participant Main as BestOffer Progam
+    participant BuyingIntent as Buying Intent Account (PDA)<br/>
+    participant Offer as Offer Account (PDA)
+    participant Vault as Offer Vault Account (PDA)
+    actor Seller as Seller
+    Buyer ->> Main: Create Buying Intent
+    Main -->> BuyingIntent: Initialize
+    Main -->> BuyingIntent: Publish
+    Note left of BuyingIntent: gtin<br/>product_name<br/>shipping_country_code<br/>shipping_state_code<br/>quantity<br/>state<br/>created_at
