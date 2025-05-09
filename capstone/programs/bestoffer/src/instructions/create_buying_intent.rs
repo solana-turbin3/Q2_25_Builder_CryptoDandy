@@ -42,10 +42,10 @@ impl<'info> CreateBuyingIntent<'info> {
             buyer: self.buyer.key(),
             gtin,
             product_name,
-            encrypted_delivery_information: None,
             shipping_country_code,
             shipping_state_code,
             state: PUBLISHED,
+            accepted_offer: None,
             quantity,
             bump: bumps.buying_intent,
         });

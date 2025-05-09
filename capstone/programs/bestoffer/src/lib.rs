@@ -69,11 +69,40 @@ pub mod bestoffer {
     pub fn accept_offer(
         ctx: Context<AcceptOffer>,
         offer: Pubkey,
+        nonce: [u8; 24],
+        buyer_ephemeral_pubkey: [u8; 32],
+        encrypted_delivery_lastname: Vec<u8>,
+        encrypted_delivery_firstname: Vec<u8>,
+        encrypted_delivery_address_line_1: Vec<u8>,
+        encrypted_delivery_address_line_2: Option<Vec<u8>>,
+        encrypted_delivery_city: Vec<u8>,
+        encrypted_delivery_postal_code: Vec<u8>,
+        encrypted_delivery_country_code: Vec<u8>,
+        encrypted_delivery_state_code: Option<Vec<u8>>,
     ) -> Result<()> {
-        // ctx.accounts.initialize(
-        //     ctx.bumps
-        // )?;
+        ctx.accounts.accept_offer(offer, ctx.bumps)?;
+        ctx.accounts.set_encrypted_delivery_address(
+            nonce,
+            buyer_ephemeral_pubkey,
+            encrypted_delivery_lastname,
+            encrypted_delivery_firstname,
+            encrypted_delivery_address_line_1,
+            encrypted_delivery_address_line_2,
+            encrypted_delivery_city,
+            encrypted_delivery_postal_code,
+            encrypted_delivery_country_code,
+            encrypted_delivery_state_code
+        )?;
+
+        ctx.accounts.transfer_funds()?;
 
         Ok(())
+    }
+
+    pub fn createTrackingDetails(
+        ctx: Context<createTrackingDetails>,
+        offer: Pubkey,
+    ) -> Result<()> {
+        ctx.accounts.create_tracking_details(offer)?;
     }
 }
