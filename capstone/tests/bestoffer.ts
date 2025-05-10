@@ -165,7 +165,6 @@ describe("bestoffer", () => {
 
         // Optional field should be null
         assert.isNull(buyingIntentData.shippingStateCode);
-        assert.isNull(buyingIntentData.encryptedDeliveryInformation);
 
         // State after creation should be published
         assert.deepEqual(buyingIntentData.state, BUYING_INTENT_STATES.PUBLISHED);
@@ -375,7 +374,47 @@ describe("bestoffer", () => {
 
         const vaultBalance = await connection.getTokenAccountBalance(vault);
         assert.equal(vaultBalance.value.uiAmount, 400); // 400 lock in vault
-
-
     })
+
+    it("Create tracking detail", async () => {
+
+        const buyingIntent = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer()],
+            program.programId
+        )[0];
+
+        const trackingDetails = {
+            carrier_name: 'UPS',
+            tracking_url: 'https://www.ups.com/track?loc=en_US&requester=ST&trackingNumber=1Z000000000000000',
+            tracking_code: '1Z000000000000000',
+        }
+
+        const createTrackingDetailSignature = await program.methods
+            .createTrackingDetails(
+                trackingDetails.carrier_name,
+                trackingDetails.tracking_url,
+                trackingDetails.tracking_code,
+            )
+            .accounts({
+                seller: seller1.publicKey,
+                buyingIntent: buyingIntent,
+            })
+            .signers([seller1])
+            .rpc();
+
+        const trackingDetailsData = await program.account.trackingDetails.fetch(
+            PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("tracking_details"),
+                    buyingIntent.toBuffer(),
+                ],
+                program.programId
+            )[0]
+        );
+
+        assert.equal(trackingDetailsData.carrierName, trackingDetails.carrier_name);
+        assert.equal(trackingDetailsData.trackingUrl, trackingDetails.tracking_url);
+        assert.equal(trackingDetailsData.trackingCode, trackingDetails.tracking_code);
+
+    });
 });

@@ -99,10 +99,13 @@ pub mod bestoffer {
         Ok(())
     }
 
-    pub fn createTrackingDetails(
-        ctx: Context<createTrackingDetails>,
-        offer: Pubkey,
+    pub fn create_tracking_details(
+        ctx: Context<CreateTrackingDetails>,
+        carrier_name: String,
+        tracking_url: String,
+        tracking_code: String,
     ) -> Result<()> {
-        ctx.accounts.create_tracking_details(offer)?;
+        ctx.accounts.initialize(carrier_name, tracking_url, tracking_code, ctx.bumps)?;
+        Ok(())
     }
 }
