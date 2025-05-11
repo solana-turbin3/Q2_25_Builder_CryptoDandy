@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{Offer, Config, BuyingIntent, TrackingDetails};
-use crate::OfferState::PUBLISHED;
+use crate::{Offer, Config, BuyingIntent, TrackingDetails, BuyingIntentState};
 
 #[derive(Accounts)]
 pub struct CreateTrackingDetails<'info> {
@@ -9,6 +8,7 @@ pub struct CreateTrackingDetails<'info> {
     pub seller: Signer<'info>,
 
     #[account(
+        mut,
         seeds = [b"buy_intent", buying_intent.buyer.key().as_ref()],
         bump = buying_intent.bump,
     )]
@@ -36,6 +36,11 @@ impl<'info> CreateTrackingDetails<'info> {
     )
         -> Result<()> {
 
+        // Update Buying Intent state
+        // TODO, Previous state should be CONFIRMED, if no, throws custom error 
+        self.buying_intent.state = BuyingIntentState::SHIPPED;
+
+        // Save shipping details
         self.tracking_details.set_inner(TrackingDetails {
             carrier_name,
             tracking_url,

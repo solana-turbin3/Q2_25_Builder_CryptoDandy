@@ -66,19 +66,24 @@ pub struct AcceptOffer<'info> {
 }
 
 impl<'info> AcceptOffer<'info> {
+    
+    // Accept one seller offer
     pub fn accept_offer(&mut self, offer: Pubkey, bumps: AcceptOfferBumps) -> Result<()>
     {
+        
         // Change the state of the buying intent to confirm
+        // TODO, Previous state should be PUBLISHED, if no, throws custom error
         self.buying_intent.state = BuyingIntentState::CONFIRMED;
         self.buying_intent.accepted_offer = Some(offer);
 
         // Update the offer state to reflect the accepted offer
+        // TODO, Previous state should be PUBLISHED, if no, throws custom error
         self.offer.state = OfferState::ACCEPTED;
 
         Ok(())
     }
     
-    // Set the encrypted delivery address on the buying intent
+    // create the encrypted delivery address
     pub fn set_encrypted_delivery_address(
         &mut self,
         nonce: [u8; 24],
