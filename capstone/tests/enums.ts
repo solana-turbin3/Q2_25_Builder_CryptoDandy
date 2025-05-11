@@ -11,6 +11,8 @@ const BUYING_INTENT_STATES = {
 
 const OFFER_STATES = {
     PUBLISHED: {published: {}},
+    ACCEPTED: {accepted: {}},
+    DELIVERED: {delivered: {}},
     CANCELLED: {cancelled: {}},
 };
 

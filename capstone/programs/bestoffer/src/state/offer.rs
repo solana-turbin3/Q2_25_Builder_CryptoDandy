@@ -7,7 +7,7 @@ pub use crate::offer_state::*;
 pub struct Offer {
     // ID
     pub id: u64,
-    
+
     // Pubkey of the seller
     pub seller: Pubkey,
 

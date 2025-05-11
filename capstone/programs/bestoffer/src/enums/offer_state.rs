@@ -4,5 +4,6 @@ use anchor_lang::prelude::*;
 pub enum OfferState {
     PUBLISHED, // Initial state
     ACCEPTED,
+    DELIVERED,
     CANCELLED, // The seller can cancel an offer
 }

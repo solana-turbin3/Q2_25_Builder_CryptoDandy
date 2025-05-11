@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
-use crate::{Offer, Config, BuyingIntent};
 use crate::OfferState::PUBLISHED;
+use crate::{BuyingIntent, Config, Offer};
 
 #[derive(Accounts)]
 pub struct CreateOffer<'info> {
@@ -41,9 +41,8 @@ impl<'info> CreateOffer<'info> {
         offer_price: u64,
         shipping_price: u64,
         mint: Pubkey,
-        bumps: CreateOfferBumps,
-    )
-        -> Result<()> {
+        bumps: &CreateOfferBumps,
+    ) -> Result<()> {
         self.offer.set_inner(Offer {
             id: self.config.offer_increment,
             seller: self.seller.key(),

@@ -3,7 +3,6 @@ use anchor_lang::prelude::*;
 #[account]
 #[derive(InitSpace)]
 pub struct TrackingDetails {
-
     #[max_len(100)]
     pub carrier_name: String,
 

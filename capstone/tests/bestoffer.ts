@@ -1,18 +1,23 @@
 import * as anchor from "@coral-xyz/anchor";
-import {ASSOCIATED_TOKEN_PROGRAM_ID, createMint,
-    getAssociatedTokenAddress, getOrCreateAssociatedTokenAccount, mintTo,
-    TOKEN_PROGRAM_ID} from "@solana/spl-token"
+import {
+    ASSOCIATED_TOKEN_PROGRAM_ID,
+    createMint,
+    getAssociatedTokenAddress,
+    getOrCreateAssociatedTokenAccount,
+    mintTo,
+    TOKEN_PROGRAM_ID
+} from "@solana/spl-token"
 import {Bestoffer} from "../target/types/bestoffer";
 
-import {PublicKey, Keypair, LAMPORTS_PER_SOL, SystemProgram} from "@solana/web3.js";
+import {Keypair, LAMPORTS_PER_SOL, PublicKey} from "@solana/web3.js";
 
 import {assert} from "chai";
 
 import sodium from 'libsodium-wrappers';
 import bs58 from 'bs58';
 
-import {BUYING_INTENT_STATES} from "./enums";
-import {log, fundWallet, confirm, } from "./utils";
+import {BUYING_INTENT_STATES, OFFER_STATES} from "./enums";
+import {confirm, fundWallet,} from "./utils";
 
 describe("bestoffer", () => {
     // Setup cluster config
@@ -41,7 +46,6 @@ describe("bestoffer", () => {
     });
 
 
-
     const accounts = {
         admin: admin.publicKey,
         buyer: buyer.publicKey,
@@ -50,8 +54,7 @@ describe("bestoffer", () => {
     };
 
 
-    const atas = {
-    };
+    const atas = {};
 
     it("Create mint account and fund participants", async () => {
 
@@ -63,7 +66,7 @@ describe("bestoffer", () => {
             null,           // freeze authority (null = pas de freeze)
             6,              // décimales
             mintKeypair,    // utiliser le keypair généré
-            { commitment: 'confirmed' },      // options par défaut
+            {commitment: 'confirmed'},      // options par défaut
             TOKEN_PROGRAM_ID
         );
 
@@ -76,7 +79,7 @@ describe("bestoffer", () => {
                     pubkey,
                     false,
                     'confirmed',
-                    { commitment: 'confirmed' },
+                    {commitment: 'confirmed'},
                     TOKEN_PROGRAM_ID,
                     ASSOCIATED_TOKEN_PROGRAM_ID
                 );
@@ -91,7 +94,7 @@ describe("bestoffer", () => {
                     admin,
                     1000_000_000,
                     [],
-                    { commitment: 'confirmed' },
+                    {commitment: 'confirmed'},
                     TOKEN_PROGRAM_ID
                 );
             }
@@ -123,6 +126,21 @@ describe("bestoffer", () => {
         assert.equal(configData.offerIncrement.toNumber(), 0);
     });
 
+    // Create Treasury
+    it("Create Treasury", async () => {
+        await program.methods.createTreasury().signers([admin]).rpc();
+
+        // Find the Config PDA data
+        const treasuryData = await program.account.treasury.fetch(
+            PublicKey.findProgramAddressSync(
+                [Buffer.from("treasury")],
+                program.programId
+            )[0]
+        );
+        assert.equal(treasuryData.admin.toString(), admin.publicKey.toString());
+    });
+
+
     //  Create Buying Intent
     it("Create Buying Intent", async () => {
         const gtin: number = 3544056897834;
@@ -145,7 +163,6 @@ describe("bestoffer", () => {
             .signers([buyer])
             .rpc();
 
-        await log(buyingIntentSignature);
         await confirm(connection, buyingIntentSignature);
 
         // Find the buying intent PDA data
@@ -228,7 +245,6 @@ describe("bestoffer", () => {
             .rpc()
         ;
 
-        await log(offerSignature);
         await confirm(connection, offerSignature);
 
         // Find the offer PDA data
@@ -246,7 +262,7 @@ describe("bestoffer", () => {
         // Buying Intent TEST
         // Mandatory field should be valid
         assert.equal(offerData.url, 'https://www.worldwidestereo.com/products/focal-bathys-mg-over-ear-wireless-headphones-with-active-noise-cancelation');
-        assert.equal(offerData.publicPrice.toNumber(), publicPrice );
+        assert.equal(offerData.publicPrice.toNumber(), publicPrice);
         assert.equal(offerData.offerPrice.toNumber(), offerPrice);
         assert.equal(offerData.shippingPrice.toNumber(), shippingPrice);
     });
@@ -360,14 +376,14 @@ describe("bestoffer", () => {
         };
 
 
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryFirstname), address.firstname );
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryLastname), address.lastname );
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryAddressLine1), address.address_line_1 );
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryAddressLine2), address.address_line_2 );
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryCity), address.city );
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryPostalCode), address.postal_code );
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryCountryCode), address.country_code );
-        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryStateCode), address.state_code );
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryFirstname), address.firstname);
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryLastname), address.lastname);
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryAddressLine1), address.address_line_1);
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryAddressLine2), address.address_line_2);
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryCity), address.city);
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryPostalCode), address.postal_code);
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryCountryCode), address.country_code);
+        assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryStateCode), address.state_code);
 
         const buyerBalance = await connection.getTokenAccountBalance(atas.buyerAssociatedTokenAccount.address);
         assert.equal(buyerBalance.value.uiAmount, 600); // 1000 - 400 lock in vault
@@ -416,5 +432,127 @@ describe("bestoffer", () => {
         assert.equal(trackingDetailsData.trackingUrl, trackingDetails.tracking_url);
         assert.equal(trackingDetailsData.trackingCode, trackingDetails.tracking_code);
 
+    });
+
+    it('Buyer accept delivery', async () => {
+
+        // Get Buying Intent Account
+        const buyingIntent = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer()],
+            program.programId
+        )[0];
+
+        // Get Offer Account
+        const offer = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("offer"),
+                buyingIntent.toBuffer(),
+                seller1.publicKey.toBuffer(),
+            ],
+            program.programId
+        )[0];
+
+        // Get Vault Account
+        const vault = await getAssociatedTokenAddress(
+            mintKeypair.publicKey,
+            buyingIntent,
+            true,
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        // Get Config Account
+        const config = PublicKey.findProgramAddressSync(
+            [Buffer.from("config")],
+            program.programId
+        )[0];
+
+        // Get Treasury Account
+        const treasury = PublicKey.findProgramAddressSync(
+            [Buffer.from("treasury")],
+            program.programId
+        )[0];
+
+        // Get Treasury ATA
+        const treasuryATA = await getOrCreateAssociatedTokenAccount(
+            connection,
+            admin,
+            mintKeypair.publicKey,
+            treasury,
+            true,
+            'confirmed',
+            {commitment: 'confirmed'},
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        // Get Seller ATA
+        const sellerATA = await getOrCreateAssociatedTokenAccount(
+            connection,
+            seller1.publicKey,
+            mintKeypair.publicKey,
+            seller1.publicKey,
+            false,
+            'confirmed',
+            {commitment: 'confirmed'},
+            TOKEN_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        // Get all balances
+        const initialVaultBalance = await connection.getTokenAccountBalance(vault);
+        const initialSellerBalance = await connection.getTokenAccountBalance(sellerATA.address);
+        const initialTreasuryBalance = await connection.getTokenAccountBalance(treasuryATA.address);
+
+        const acceptDeliverySignature = await program.methods
+            .acceptDelivery()
+            .accounts({
+                buyer: buyer.publicKey,
+                seller: seller1.publicKey,
+                config: config,
+                buyingIntent: buyingIntent,
+                offer: offer,
+                treasury: treasury,
+                mint: mintKeypair.publicKey,
+                vault: vault,
+                sellerAta: sellerATA.address,
+                treasuryATA: treasuryATA.address,
+                tokenProgram: TOKEN_PROGRAM_ID,
+                associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            })
+            .signers([buyer])
+            .rpc();
+
+        await confirm(connection, acceptDeliverySignature);
+
+        // After transaction balances
+        const finalVaultBalance = await connection.getTokenAccountBalance(vault);
+        const finalTreasuryBalance = await connection.getTokenAccountBalance(treasuryATA.address);
+        const finalSellerBalance = await connection.getTokenAccountBalance(sellerATA.address);
+
+        // Get configs
+        const configData = await program.account.config.fetch(config);
+
+        // Treasury should receive 1% of vault balance
+
+        const expectedFee = (initialVaultBalance.value.uiAmount * configData.fee) / 10000;
+        assert.equal(
+            finalTreasuryBalance.value.uiAmount - initialTreasuryBalance.value.uiAmount,
+            expectedFee
+        );
+
+        // Seller should receive the rest
+        const expectedSellerAmount = initialVaultBalance.value.uiAmount - expectedFee;
+        assert.equal(
+            finalSellerBalance.value.uiAmount - initialSellerBalance.value.uiAmount,
+            expectedSellerAmount
+        );
+
+        // State verifications
+        const buyingIntentData = await program.account.buyingIntent.fetch(buyingIntent);
+        const offerData = await program.account.offer.fetch(offer);
+
+        assert.deepEqual(buyingIntentData.state, BUYING_INTENT_STATES.FULFILLED);
+        assert.deepEqual(offerData.state, OFFER_STATES.DELIVERED);
     });
 });

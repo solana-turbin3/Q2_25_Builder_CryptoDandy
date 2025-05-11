@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{Config};
+use crate::Config;
 
 #[derive(Accounts)]
 pub struct InitializeConfig<'info> {
@@ -20,11 +20,7 @@ pub struct InitializeConfig<'info> {
 }
 
 impl<'info> InitializeConfig<'info> {
-    pub fn initialize_config(
-        &mut self,
-        bumps: InitializeConfigBumps,
-    )
-        -> Result<()> {
+    pub fn initialize(&mut self, bumps: &InitializeConfigBumps) -> Result<()> {
         self.config.set_inner(Config {
             admin: self.admin.key.clone(),
             fee: 100,

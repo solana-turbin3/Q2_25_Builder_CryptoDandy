@@ -27,7 +27,7 @@ pub struct BuyingIntent {
     pub shipping_state_code: Option<String>, // Needs for country like US / CA
 
     pub accepted_offer: Option<Pubkey>,
-    
+
     // Buying Intent State
     pub state: BuyingIntentState,
 

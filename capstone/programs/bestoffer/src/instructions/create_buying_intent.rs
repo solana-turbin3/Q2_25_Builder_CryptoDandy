@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
-use crate::{BuyingIntent, Config};
 use crate::BuyingIntentState::PUBLISHED;
+use crate::{BuyingIntent, Config};
 
 #[derive(Accounts)]
 pub struct CreateBuyingIntent<'info> {
@@ -35,8 +35,8 @@ impl<'info> CreateBuyingIntent<'info> {
         shipping_country_code: String,
         shipping_state_code: Option<String>,
         quantity: u16,
-        bumps: CreateBuyingIntentBumps)
-        -> Result<()> {
+        bumps: &CreateBuyingIntentBumps,
+    ) -> Result<()> {
         self.buying_intent.set_inner(BuyingIntent {
             id: self.config.buying_intent_increment,
             buyer: self.buyer.key(),
