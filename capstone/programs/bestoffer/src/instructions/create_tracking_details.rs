@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::{BuyingIntent, BuyingIntentState, Config, Offer, TrackingDetails};
+use crate::{BuyingIntent, BuyingIntentState, TrackingDetails};
 
 #[derive(Accounts)]
 pub struct CreateTrackingDetails<'info> {

@@ -58,7 +58,7 @@ pub struct AcceptOffer<'info> {
 
 impl<'info> AcceptOffer<'info> {
     // Accept one seller offer
-    pub fn accept_offer(&mut self, offer: Pubkey, bumps: &AcceptOfferBumps) -> Result<()> {
+    pub fn accept_offer(&mut self, offer: Pubkey) -> Result<()> {
         // Change the state of the buying intent to confirm
         // TODO, Previous state should be PUBLISHED, if no, throws custom error
         self.buying_intent.state = BuyingIntentState::CONFIRMED;
@@ -84,7 +84,6 @@ impl<'info> AcceptOffer<'info> {
         encrypted_delivery_postal_code: Vec<u8>,
         encrypted_delivery_country_code: Vec<u8>,
         encrypted_delivery_state_code: Option<Vec<u8>>,
-        bumps: &AcceptOfferBumps,
     ) -> Result<()> {
         self.encrypted_delivery_information
             .set_inner(EncryptedDeliveryInformation {
@@ -104,7 +103,7 @@ impl<'info> AcceptOffer<'info> {
     }
 
     // Move funds from buyer to vault
-    pub fn transfer_funds(&mut self, bumps: &AcceptOfferBumps) -> Result<()> {
+    pub fn transfer_funds(&mut self) -> Result<()> {
         let transfer_accounts = TransferChecked {
             from: self.buyer_ata.to_account_info(),
             mint: self.mint.to_account_info(),

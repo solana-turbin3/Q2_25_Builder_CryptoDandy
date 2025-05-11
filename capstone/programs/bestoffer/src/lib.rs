@@ -87,7 +87,7 @@ pub mod bestoffer {
         encrypted_delivery_state_code: Option<Vec<u8>>,
     ) -> Result<()> {
         // Update states on Buying intent and offer
-        ctx.accounts.accept_offer(offer, &ctx.bumps)?;
+        ctx.accounts.accept_offer(offer)?;
 
         // Create the delivery address PDA with E2E encrypted data
         ctx.accounts.set_encrypted_delivery_address(
@@ -101,11 +101,10 @@ pub mod bestoffer {
             encrypted_delivery_postal_code,
             encrypted_delivery_country_code,
             encrypted_delivery_state_code,
-            &ctx.bumps,
         )?;
 
         // Transfer funds from buyer to vault
-        ctx.accounts.transfer_funds(&ctx.bumps)?;
+        ctx.accounts.transfer_funds()?;
 
         Ok(())
     }
@@ -124,8 +123,8 @@ pub mod bestoffer {
 
     // Buyers accept delivery
     pub fn accept_delivery(ctx: Context<AcceptDelivery>) -> Result<()> {
-        ctx.accounts.accept_delivery(&ctx.bumps)?;
-        ctx.accounts.transfer_funds(&ctx.bumps)?;
+        ctx.accounts.accept_delivery()?;
+        ctx.accounts.transfer_funds()?;
         Ok(())
     }
 }

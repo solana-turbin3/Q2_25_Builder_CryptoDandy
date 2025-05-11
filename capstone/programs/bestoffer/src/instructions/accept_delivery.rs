@@ -70,7 +70,7 @@ pub struct AcceptDelivery<'info> {
 }
 
 impl<'info> AcceptDelivery<'info> {
-    pub fn accept_delivery(&mut self, bumps: &AcceptDeliveryBumps) -> Result<()> {
+    pub fn accept_delivery(&mut self) -> Result<()> {
         // Change status
         self.buying_intent.state = BuyingIntentState::FULFILLED;
         self.offer.state = OfferState::DELIVERED;
@@ -78,7 +78,7 @@ impl<'info> AcceptDelivery<'info> {
         Ok(())
     }
 
-    pub fn transfer_funds(&mut self, bumps: &AcceptDeliveryBumps) -> Result<()> {
+    pub fn transfer_funds(&mut self) -> Result<()> {
         // Get vault amount
         let vault_amount = self.vault.amount;
 
