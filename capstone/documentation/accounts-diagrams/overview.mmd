@@ -1,0 +1,84 @@
+---
+config:
+  theme: redux
+---
+classDiagram
+    direction TB
+    Buyer --> BestOffer
+    Seller --> BestOffer
+    BestOffer --> BuyingIntent
+    BestOffer --> Offer
+    BuyingIntent "1" -- "*" Offer
+    BuyingIntent <.. BuyingIntentState
+    BuyingIntent "1" .. "1" Vault
+    Offer <.. OfferState
+    class Buyer {
+        +Pubkey
+    }
+
+    class Seller {
+        +Pubkey
+    }
+
+    class BestOffer {
+        +progam_id
+        create_buying_intent()
+        create_offer()
+        accept_offer()
+        add_delivery()
+        confirm_delivery()
+    }
+
+    class Config {
+        +admin: Pubkey
+        +fee: u16
+        +treasury_bump: u8
+        +buying_intent_increment: u64
+        +offer_increment: u64
+    }
+
+    class BuyingIntent {
+        +id: u64
+        +gtin: [u8, 14]
+        +product_name: String
+        +encrypted_lastname: String
+        +encrypted_firstname: String
+        +encrypted_street: String
+        +encrypted_city: String
+        +encrypted_postal_code: String
+        +shipping_country_code: String
+        +shipping_state_code: String
+        +quantity: u16,
+        +state: BuyingIntentState
+        +accepted_offer: Pubkey
+        +offers: List~Pubkey~
+    }
+
+    class Offer {
+        +id: u64
+        +product_url: String
+        +public_price: u16
+        +offer_price: u16
+        +shipping_price: u16
+        +mint: Pubkey
+        +state: OfferState
+    }
+
+    class Vault {
+        +mint
+    }
+
+    class BuyingIntentState {
+        PUBLISHED
+        CANCELLED
+        CONFIRMED
+        SHIPPED
+        FULLFILLED
+        DISPUTED
+    }
+
+    class OfferState {
+        PUBLISHED
+        ACCEPTED
+        CANCELLED
+    }

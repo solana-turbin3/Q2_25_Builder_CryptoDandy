@@ -1,0 +1,9 @@
+sequenceDiagram
+    actor Buyer as Buyer
+    participant Main as BestOffer Progam
+    participant BuyingIntent as Buying Intent Account (PDA)<br/>
+    participant Offer as Offer Account (PDA)
+    participant Vault as Offer Vault Account (PDA)
+    actor Seller as Seller
+    Seller ->> Main: Add Parcel Tracking Information
+    Main -->> Offer: SetTracking

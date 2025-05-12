@@ -1,0 +1,12 @@
+sequenceDiagram
+    actor Buyer as Buyer
+    participant Main as BestOffer Progam
+    participant BuyingIntent as Buying Intent Account (PDA)<br/>
+    participant Offer as Offer Account (PDA)
+    participant Vault as Offer Vault Account (PDA)
+    participant BestOfferVault as BestOfferVault
+    actor Seller as Seller
+    Seller ->> Main: Withdraw the funds
+    Main ->> BuyingIntent: Withdraw the funds
+    Vault -->> Seller: TransferFunds
+    Vault -->> BestOfferVault: TransferFees

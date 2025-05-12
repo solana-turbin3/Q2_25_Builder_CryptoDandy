@@ -1,0 +1,16 @@
+sequenceDiagram
+    actor Buyer as Buyer
+    participant Main as Best Seller
+    actor Seller as Sellers
+    autonumber
+    Buyer ->> Main: Create a buying intent
+    Seller ->> Main: Create offers for a buying intent
+    Main -->> Buyer: Notify for each new seller offer
+    Buyer ->> Main: Accept one offer and deposit fund in vault
+    Main -->> Seller: Notify acceptation
+    Note right of Seller: Seller prepare the shipping
+    Seller ->> Main: Send parcel tracking information
+    Main -->> Buyer: Notify the parcel tracking information
+    Note over Buyer, Seller: Waiting for delivery
+    Buyer ->> Main: Confirm the delivery
+    Main ->> Seller: Withdraw funds from vault
