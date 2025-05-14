@@ -16,7 +16,7 @@ pub struct CreateOffer<'info> {
     pub config: Account<'info, Config>,
 
     #[account(
-        seeds = [b"buy_intent", buying_intent.buyer.key().as_ref()],
+        seeds = [b"buy_intent", buying_intent.buyer.key().as_ref(), buying_intent.id.to_le_bytes().as_ref()],
         bump = buying_intent.bump,
     )]
     pub buying_intent: Account<'info, BuyingIntent>,
@@ -25,7 +25,7 @@ pub struct CreateOffer<'info> {
         init,
         payer = seller,
         space = 8 + Offer::INIT_SPACE,
-        seeds = [b"offer", buying_intent.key().as_ref(), seller.key().as_ref()],
+        seeds = [b"offer", buying_intent.key().as_ref(), seller.key().as_ref(), config.offer_increment.to_le_bytes().as_ref()],
         bump
     )]
     pub offer: Account<'info, Offer>,

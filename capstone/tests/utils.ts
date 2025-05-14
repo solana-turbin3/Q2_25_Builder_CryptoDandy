@@ -3,7 +3,7 @@ import * as anchor from "@coral-xyz/anchor";
 
 const log = async (signature: string): Promise<string> => {
     console.log(
-        `https://explorer.solana.com/tx/${signature}?cluster=custom&customUrl=http%3A%2F%2Flocalhost%3A8899`
+        `https://explorer.solana.com/tx/${signature}?cluster=devnet`
     );
     return signature;
 };
@@ -16,7 +16,7 @@ const confirm = async (
     await connection.confirmTransaction({
         signature,
         ...block,
-    });
+    }, 'confirmed');
 
     return signature;
 };
@@ -26,11 +26,26 @@ const fundWallet = async function fundWallet(
     account,
     amount: number
 ) {
-    const signature = await provider.connection.requestAirdrop(
-        account.publicKey,
-        amount
-    );
-    await confirm(provider.connection, signature);
+
+    try {
+        const signature = await provider.connection.requestAirdrop(
+            account.publicKey,
+            amount
+        );
+
+        log(signature);
+        await confirm(provider.connection, signature);
+
+    } catch (e) {
+        console.log(`error in funding wallet with requestAirdrop : ${e.message}`);
+    }
 };
 
-export {log, confirm, fundWallet};
+function numberToLeBytes(num: number, length: number = 8): Buffer {
+    const buffer = Buffer.alloc(length);
+    buffer.writeBigUInt64LE(BigInt(num), 0);
+    return buffer;
+}
+
+
+export {log, confirm, fundWallet, numberToLeBytes};

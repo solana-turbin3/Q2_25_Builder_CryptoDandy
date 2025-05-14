@@ -12,7 +12,7 @@ pub struct CreateBuyingIntent<'info> {
         init,
         payer = buyer,
         space = 8 + BuyingIntent::INIT_SPACE,
-        seeds = [b"buy_intent", buyer.key().as_ref()],
+        seeds = [b"buy_intent", buyer.key().as_ref(), config.buying_intent_increment.to_le_bytes().as_ref()],
         bump,
     )]
     pub buying_intent: Account<'info, BuyingIntent>,

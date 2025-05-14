@@ -12,11 +12,9 @@ bestoffer = "ET53DG44KdWyNb96hShnJwxurr6x2cij9GRhacVhGQYt"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
-wallet = "~/.config/solana/id.json"
+cluster = "https://turbine-solanad-4cde.devnet.rpcpool.com/168dd64f-ce5e-4e19-a836-f6482ad6b396"
+#cluster = "localnet"
+wallet = "./turbin3-wallet.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-#
-#[test.validator]
-#url = "https://api.mainnet-beta.solana.com"
+test = "yarn run ts-mocha --parallel false -p ./tsconfig.json -t 1000000 tests/bestoffer.ts"

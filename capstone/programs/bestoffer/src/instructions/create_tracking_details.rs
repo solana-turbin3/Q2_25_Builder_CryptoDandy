@@ -9,7 +9,7 @@ pub struct CreateTrackingDetails<'info> {
 
     #[account(
         mut,
-        seeds = [b"buy_intent", buying_intent.buyer.key().as_ref()],
+        seeds = [b"buy_intent", buying_intent.buyer.key().as_ref(), buying_intent.id.to_le_bytes().as_ref()],
         bump = buying_intent.bump,
     )]
     pub buying_intent: Account<'info, BuyingIntent>,
