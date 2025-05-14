@@ -13,13 +13,13 @@ pub struct AcceptOffer<'info> {
 
     #[account(
         mut,
-        seeds = [b"buy_intent", buying_intent.buyer.key().as_ref()],
+        seeds = [b"buy_intent", buying_intent.buyer.key().as_ref(), buying_intent.id.to_le_bytes().as_ref()],
         bump = buying_intent.bump,
     )]
     pub buying_intent: Account<'info, BuyingIntent>,
 
     #[account(
-        seeds = [b"offer", buying_intent.key().as_ref(), offer.seller.key().as_ref()],
+        seeds = [b"offer", buying_intent.key().as_ref(), offer.seller.key().as_ref(), offer.id.to_le_bytes().as_ref()],
         bump = offer.bump,
     )]
     pub offer: Account<'info, Offer>,

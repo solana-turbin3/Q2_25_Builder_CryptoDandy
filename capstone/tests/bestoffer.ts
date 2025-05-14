@@ -1,10 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
-    createMint,
     getAssociatedTokenAddress,
     getOrCreateAssociatedTokenAccount,
-    mintTo,
     TOKEN_PROGRAM_ID
 } from "@solana/spl-token"
 import {Bestoffer} from "../target/types/bestoffer";
@@ -17,7 +15,15 @@ import sodium from 'libsodium-wrappers';
 import bs58 from 'bs58';
 
 import {BUYING_INTENT_STATES, OFFER_STATES} from "./enums";
-import {confirm, fundWallet,} from "./utils";
+import {confirm, numberToLeBytes} from "./utils";
+
+import buyerWallet from "../buyer-wallet.json";
+import sellerWallet from "../seller-wallet.json";
+import {step} from "mocha-steps";
+import {createRandomMint} from "./instructions/createMint";
+import {
+    createAssociatedTokenAccountAndMint,
+} from "./instructions/createAssociatedTokenAccounts";
 
 describe("bestoffer", () => {
     // Setup cluster config
@@ -32,121 +38,141 @@ describe("bestoffer", () => {
 
     // Prepare all user accounts
     const admin = (provider.wallet as anchor.Wallet).payer;
-    const buyer = Keypair.generate();
-    const seller1 = Keypair.generate();
-    const seller2 = Keypair.generate();
-
-
-    // Créer un nouveau keypair pour le mint
-    const mintKeypair = Keypair.generate();
-
-    // Fund all accounts
-    [buyer, seller1, seller2].forEach((account) => {
-        fundWallet(provider, account, 10 * LAMPORTS_PER_SOL);
-    });
+    const buyer = Keypair.fromSecretKey(new Uint8Array(buyerWallet));
+    const seller1 = Keypair.fromSecretKey(new Uint8Array(sellerWallet));
 
 
     const accounts = {
-        admin: admin.publicKey,
-        buyer: buyer.publicKey,
-        seller1: seller1.publicKey,
-        seller2: seller2.publicKey,
+        admin: admin,
+        buyer: buyer,
+        seller1: seller1
     };
 
+    let associatedTokenAccounts = {};
 
-    const atas = {};
+    const mintKeypair = Keypair.generate();
 
-    it("Create mint account and fund participants", async () => {
+    step("Funds accounts if localnet", async () => {
+        if (provider.connection.rpcEndpoint === 'http://127.0.0.1:8899') {
+            try {
+                const airdropPromises = [];
 
-        // Créer le compte mint
-        const createMintTx = await createMint(
-            connection,
-            admin,           // payeur
-            admin.publicKey, // autorité du mint
-            null,           // freeze authority (null = pas de freeze)
-            6,              // décimales
-            mintKeypair,    // utiliser le keypair généré
-            {commitment: 'confirmed'},      // options par défaut
-            TOKEN_PROGRAM_ID
-        );
-
-        Object.entries(accounts).forEach(
-            async ([account, pubkey]) => {
-                const ata = await getOrCreateAssociatedTokenAccount(
-                    connection,
-                    admin,
-                    mintKeypair.publicKey,
-                    pubkey,
-                    false,
-                    'confirmed',
-                    {commitment: 'confirmed'},
-                    TOKEN_PROGRAM_ID,
-                    ASSOCIATED_TOKEN_PROGRAM_ID
+                Object.values(accounts).forEach((account) => {
+                        airdropPromises.push(provider.connection.requestAirdrop(account.publicKey, LAMPORTS_PER_SOL))
+                    }
                 );
 
-                atas[`${account}AssociatedTokenAccount`] = ata;
-
-                await mintTo(
-                    connection,
-                    admin,
-                    mintKeypair.publicKey,
-                    ata.address,
-                    admin,
-                    1000_000_000,
-                    [],
-                    {commitment: 'confirmed'},
-                    TOKEN_PROGRAM_ID
-                );
+                await Promise.all(airdropPromises);
+            } catch (e) {
+                console.log('Error airdrop', e);
             }
-        );
-
-        // Vérifier les soldes
-        Object.entries(accounts).forEach(
-            async ([account, pubkey]) => {
-                const balance = await connection.getTokenAccountBalance(`${account}AssociatedTokenAccount`.address);
-                assert.equal(balance.value.uiAmount, 1000);
-            }
-        )
+        }
     });
 
+    step("Prepare ATA Accounts", async () => {
+
+        try {
+            await createRandomMint(connection, mintKeypair, admin, admin);
+
+            associatedTokenAccounts['admin'] = await createAssociatedTokenAccountAndMint(connection, mintKeypair.publicKey, admin, admin);
+            associatedTokenAccounts['buyer'] = await createAssociatedTokenAccountAndMint(connection, mintKeypair.publicKey, admin, buyer);
+            associatedTokenAccounts['seller1'] = await createAssociatedTokenAccountAndMint(connection, mintKeypair.publicKey, admin, seller1);
+
+        } catch (e) {
+            console.log('Error', e);
+        }
+    })
 
     // Create Global Config
-    it("Create Config", async () => {
-        await program.methods.createConfig().signers([admin]).rpc();
+    step("Create Config", (done) => {
+
+        try {
+            program.account.config.getAccountInfo(
+                PublicKey.findProgramAddressSync(
+                    [Buffer.from("config")],
+                    program.programId
+                )[0]
+            ).then((accountInfo) => {
+                if (accountInfo !== null && accountInfo.lamports > 0) {
+                    console.log('Config already exists, skipping');
+                    done()
+                } else {
+
+                    program.methods.createConfig().signers([admin]).rpc().then((signature) => {
+
+                        confirm(connection, signature).then(() => {
+
+                            program.account.config.fetch(
+                                PublicKey.findProgramAddressSync(
+                                    [Buffer.from("config")],
+                                    program.programId
+                                )[0]
+                            ).then((configData) => {
+                                assert.equal(configData.fee, 100);
+                                assert.equal(configData.buyingIntentIncrement.toNumber(), 0);
+                                assert.equal(configData.offerIncrement.toNumber(), 0);
+                                done()
+                            })
+                        });
+                    });
+                }
+            })
+        } catch (e) {
+            console.log('Error', e);
+            done()
+        }
+    });
+
+    // Create Treasury
+    step("Create Treasury", (done) => {
+        try {
+            program.account.config.getAccountInfo(
+                PublicKey.findProgramAddressSync(
+                    [Buffer.from("treasury")],
+                    program.programId
+                )[0]
+            ).then((accountInfo) => {
+                if (accountInfo !== null && accountInfo.lamports > 0) {
+                    console.log('Treasury already exists, skipping');
+                    done()
+                } else {
+                    program.methods.createTreasury().signers([admin]).rpc().then((signature) => {
+                        confirm(connection, signature).then(() => {
+                            // Find the Config PDA data
+                            program.account.treasury.fetch(
+                                PublicKey.findProgramAddressSync(
+                                    [Buffer.from("treasury")],
+                                    program.programId
+                                )[0]
+                            ).then((treasuryData) => {
+                                assert.equal(treasuryData.admin.toString(), admin.publicKey.toString());
+                                done()
+                            })
+                        })
+                    });
+                }
+            })
+        } catch (e) {
+            console.log('Error', e);
+            done()
+        }
+    });
+
+    //  Create Buying Intent
+    step("Create Buying Intent", async () => {
+
+        const gtin: number = 3544056897834;
+        const productName: string = "Focal Bathys MG";
+        const shippingCountryCode: string = "FR";
+        const quantity: number = 1;
 
         // Find the Config PDA data
-        const configData = await program.account.config.fetch(
+        const beforeTestConfigData = await program.account.config.fetch(
             PublicKey.findProgramAddressSync(
                 [Buffer.from("config")],
                 program.programId
             )[0]
         );
-        assert.equal(configData.fee, 100);
-        assert.equal(configData.buyingIntentIncrement.toNumber(), 0);
-        assert.equal(configData.offerIncrement.toNumber(), 0);
-    });
-
-    // Create Treasury
-    it("Create Treasury", async () => {
-        await program.methods.createTreasury().signers([admin]).rpc();
-
-        // Find the Config PDA data
-        const treasuryData = await program.account.treasury.fetch(
-            PublicKey.findProgramAddressSync(
-                [Buffer.from("treasury")],
-                program.programId
-            )[0]
-        );
-        assert.equal(treasuryData.admin.toString(), admin.publicKey.toString());
-    });
-
-
-    //  Create Buying Intent
-    it("Create Buying Intent", async () => {
-        const gtin: number = 3544056897834;
-        const productName: string = "Focal Bathys MG";
-        const shippingCountryCode: string = "FR";
-        const quantity: number = 1;
 
         // Call the remote instruction
         const buyingIntentSignature = await program.methods
@@ -168,13 +194,14 @@ describe("bestoffer", () => {
         // Find the buying intent PDA data
         const buyingIntentData = await program.account.buyingIntent.fetch(
             PublicKey.findProgramAddressSync(
-                [Buffer.from("buy_intent"), buyer.publicKey.toBuffer()],
+                [Buffer.from("buy_intent"), buyer.publicKey.toBuffer(), numberToLeBytes(beforeTestConfigData.buyingIntentIncrement.toNumber())],
                 program.programId
             )[0]
         );
 
         // Buying Intent TEST
         // Mandatory field should be valid
+        assert.equal(buyingIntentData.id.toNumber(), beforeTestConfigData.buyingIntentIncrement.toNumber());
         assert.equal(buyingIntentData.gtin.toNumber(), gtin);
         assert.equal(buyingIntentData.productName, productName);
         assert.equal(buyingIntentData.shippingCountryCode, shippingCountryCode);
@@ -186,37 +213,32 @@ describe("bestoffer", () => {
         // State after creation should be published
         assert.deepEqual(buyingIntentData.state, BUYING_INTENT_STATES.PUBLISHED);
 
-        // Find the Config PDA data
-        const configData = await program.account.config.fetch(
+
+        // Config TEST
+        const afterConfigData = await program.account.config.fetch(
             PublicKey.findProgramAddressSync(
                 [Buffer.from("config")],
                 program.programId
             )[0]
         );
 
-        // Config TEST
-        // Buying intent increment should be 1
-        assert.equal(configData.buyingIntentIncrement.toNumber(), 1);
-        // Offer increment should be 0
-        assert.equal(configData.offerIncrement.toNumber(), 0);
-    });
-
-    //  Create Buying Intent
-    it("List buying intent", async () => {
-        const accounts = await program.account.buyingIntent.all();
-        assert.equal(accounts.length, 1);
+        // Buying intent increment should be +1
+        assert.equal(afterConfigData.buyingIntentIncrement.toNumber(), beforeTestConfigData.buyingIntentIncrement.toNumber() + 1);
     });
 
     //  Create an offer
-    it("Create an offer", async () => {
-        const buyingIntent = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer()],
-            program.programId
-        )[0];
+    step("Create an offer", async () => {
 
         const config = PublicKey.findProgramAddressSync(
             [Buffer.from("config")],
             program.programId
+        )[0];
+
+        const beforeTestConfigData = await program.account.config.fetch(config);
+
+        const buyingIntent = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer(), numberToLeBytes(beforeTestConfigData.buyingIntentIncrement.toNumber() - 1)],
+            program.programId,
         )[0];
 
         const url: string = "https://www.worldwidestereo.com/products/focal-bathys-mg-over-ear-wireless-headphones-with-active-noise-cancelation";
@@ -254,6 +276,7 @@ describe("bestoffer", () => {
                     Buffer.from("offer"),
                     buyingIntent.toBuffer(),
                     seller1.publicKey.toBuffer(),
+                    numberToLeBytes(beforeTestConfigData.offerIncrement.toNumber()),
                 ],
                 program.programId
             )[0]
@@ -261,13 +284,25 @@ describe("bestoffer", () => {
 
         // Buying Intent TEST
         // Mandatory field should be valid
+        assert.equal(offerData.id.toNumber(), beforeTestConfigData.offerIncrement.toNumber());
         assert.equal(offerData.url, 'https://www.worldwidestereo.com/products/focal-bathys-mg-over-ear-wireless-headphones-with-active-noise-cancelation');
         assert.equal(offerData.publicPrice.toNumber(), publicPrice);
         assert.equal(offerData.offerPrice.toNumber(), offerPrice);
         assert.equal(offerData.shippingPrice.toNumber(), shippingPrice);
+
+        // Config TEST
+        const afterConfigData = await program.account.config.fetch(
+            PublicKey.findProgramAddressSync(
+                [Buffer.from("config")],
+                program.programId
+            )[0]
+        );
+
+        // Offer increment should be +1
+        assert.equal(afterConfigData.offerIncrement.toNumber(), beforeTestConfigData.offerIncrement.toNumber() + 1);
     });
 
-    it("Accept offer", async () => {
+    step("Accept offer", async () => {
 
         await sodium.ready;
 
@@ -276,13 +311,15 @@ describe("bestoffer", () => {
         const buyerEphemeral = sodium.crypto_box_keypair();
         const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES);
 
-        const buyingIntent = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer()],
+        const config = PublicKey.findProgramAddressSync(
+            [Buffer.from("config")],
             program.programId
         )[0];
 
-        const config = PublicKey.findProgramAddressSync(
-            [Buffer.from("config")],
+        const beforeTestConfigData = await program.account.config.fetch(config);
+
+        const buyingIntent = PublicKey.findProgramAddressSync(
+            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer(), numberToLeBytes(beforeTestConfigData.buyingIntentIncrement.toNumber() - 1)],
             program.programId
         )[0];
 
@@ -291,6 +328,7 @@ describe("bestoffer", () => {
                 Buffer.from("offer"),
                 buyingIntent.toBuffer(),
                 seller1.publicKey.toBuffer(),
+                numberToLeBytes(beforeTestConfigData.offerIncrement.toNumber() - 1)
             ],
             program.programId
         )[0];
@@ -313,10 +351,11 @@ describe("bestoffer", () => {
         )[0];
 
         // Dériver l'adresse du vault (compte de token associé pour le buying intent)
+
         const vault = await getAssociatedTokenAddress(
             mintKeypair.publicKey,
             buyingIntent,
-            true,    // allowOwnerOffCurve = true car buyingIntent est un PDA
+            true,
             TOKEN_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
@@ -352,7 +391,7 @@ describe("bestoffer", () => {
                 offer: offer,
                 encryptedDeliveryInformation: encryptedDeliveryInformation,
                 mint: mintKeypair.publicKey,
-                buyerAssociatedTokenAccount: atas.buyerAssociatedTokenAccount.address,
+                buyerAta: associatedTokenAccounts.buyer.address,
                 vault: vault,
                 tokenProgram: TOKEN_PROGRAM_ID,
             })
@@ -385,17 +424,24 @@ describe("bestoffer", () => {
         assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryCountryCode), address.country_code);
         assert.equal(decodeFromBuyer(encryptedDeliveryInformationData.encryptedDeliveryStateCode), address.state_code);
 
-        const buyerBalance = await connection.getTokenAccountBalance(atas.buyerAssociatedTokenAccount.address);
+        const buyerBalance = await connection.getTokenAccountBalance(associatedTokenAccounts.buyer.address);
         assert.equal(buyerBalance.value.uiAmount, 600); // 1000 - 400 lock in vault
 
         const vaultBalance = await connection.getTokenAccountBalance(vault);
         assert.equal(vaultBalance.value.uiAmount, 400); // 400 lock in vault
     })
 
-    it("Create tracking detail", async () => {
+    step("Create tracking detail", async () => {
+
+        const config = PublicKey.findProgramAddressSync(
+            [Buffer.from("config")],
+            program.programId
+        )[0];
+
+        const beforeTestConfigData = await program.account.config.fetch(config);
 
         const buyingIntent = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer()],
+            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer(), numberToLeBytes(beforeTestConfigData.buyingIntentIncrement.toNumber() - 1)],
             program.programId
         )[0];
 
@@ -434,11 +480,18 @@ describe("bestoffer", () => {
 
     });
 
-    it('Buyer accept delivery', async () => {
+    step('Buyer accept delivery', async () => {
+
+        const config = PublicKey.findProgramAddressSync(
+            [Buffer.from("config")],
+            program.programId
+        )[0];
+
+        const beforeTestConfigData = await program.account.config.fetch(config);
 
         // Get Buying Intent Account
         const buyingIntent = PublicKey.findProgramAddressSync(
-            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer()],
+            [Buffer.from("buy_intent"), buyer.publicKey.toBuffer(), numberToLeBytes(beforeTestConfigData.buyingIntentIncrement.toNumber() - 1)],
             program.programId
         )[0];
 
@@ -448,6 +501,7 @@ describe("bestoffer", () => {
                 Buffer.from("offer"),
                 buyingIntent.toBuffer(),
                 seller1.publicKey.toBuffer(),
+                numberToLeBytes(beforeTestConfigData.offerIncrement.toNumber() - 1)
             ],
             program.programId
         )[0];
@@ -461,12 +515,6 @@ describe("bestoffer", () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
-        // Get Config Account
-        const config = PublicKey.findProgramAddressSync(
-            [Buffer.from("config")],
-            program.programId
-        )[0];
-
         // Get Treasury Account
         const treasury = PublicKey.findProgramAddressSync(
             [Buffer.from("treasury")],
@@ -474,7 +522,7 @@ describe("bestoffer", () => {
         )[0];
 
         // Get Treasury ATA
-        const treasuryATA = await getOrCreateAssociatedTokenAccount(
+        const treasuryAta = await getOrCreateAssociatedTokenAccount(
             connection,
             admin,
             mintKeypair.publicKey,
@@ -486,23 +534,10 @@ describe("bestoffer", () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
-        // Get Seller ATA
-        const sellerATA = await getOrCreateAssociatedTokenAccount(
-            connection,
-            seller1.publicKey,
-            mintKeypair.publicKey,
-            seller1.publicKey,
-            false,
-            'confirmed',
-            {commitment: 'confirmed'},
-            TOKEN_PROGRAM_ID,
-            ASSOCIATED_TOKEN_PROGRAM_ID
-        );
-
         // Get all balances
         const initialVaultBalance = await connection.getTokenAccountBalance(vault);
-        const initialSellerBalance = await connection.getTokenAccountBalance(sellerATA.address);
-        const initialTreasuryBalance = await connection.getTokenAccountBalance(treasuryATA.address);
+        const initialSellerBalance = await connection.getTokenAccountBalance(associatedTokenAccounts.seller1.address);
+        const initialTreasuryBalance = await connection.getTokenAccountBalance(treasuryAta.address);
 
         const acceptDeliverySignature = await program.methods
             .acceptDelivery()
@@ -515,8 +550,8 @@ describe("bestoffer", () => {
                 treasury: treasury,
                 mint: mintKeypair.publicKey,
                 vault: vault,
-                sellerAta: sellerATA.address,
-                treasuryATA: treasuryATA.address,
+                sellerAta: associatedTokenAccounts.seller1.address,
+                treasuryAta: treasuryAta.address,
                 tokenProgram: TOKEN_PROGRAM_ID,
                 associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
             })
@@ -527,8 +562,8 @@ describe("bestoffer", () => {
 
         // After transaction balances
         const finalVaultBalance = await connection.getTokenAccountBalance(vault);
-        const finalTreasuryBalance = await connection.getTokenAccountBalance(treasuryATA.address);
-        const finalSellerBalance = await connection.getTokenAccountBalance(sellerATA.address);
+        const finalTreasuryBalance = await connection.getTokenAccountBalance(treasuryAta.address);
+        const finalSellerBalance = await connection.getTokenAccountBalance(associatedTokenAccounts.seller1.address);
 
         // Get configs
         const configData = await program.account.config.fetch(config);
